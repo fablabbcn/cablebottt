@@ -1,11 +1,11 @@
 #define DRVR_PIN1 D9
 #define DRVR_PIN2 D10
 
-#define LDR1_PIN A0
-#define LDR2_PIN A1
+#define LDR1_PIN A1
+#define LDR2_PIN A0
 
-#define N_READINGS 10    // Number of readings to smooth
-#define SAMPLE_DELAY 20  // milliseconds before taking another reading
+#define N_READINGS 20    // Number of readings to smooth
+#define SAMPLE_DELAY 50  // milliseconds before taking another reading
 
 int left_buffer[N_READINGS] = { 0 };
 int right_buffer[N_READINGS] = { 0 };
@@ -33,8 +33,25 @@ void setup() {
 void loop() {
 
   updateReadings();
+  actOnMotor();
 }
 
+void actOnMotor() {
+  long netLeftInput = -(left - left_baseline);     // Inverted bc LDR reading goes low with light
+  long netRightInput = -(right - right_baseline);  // Inverted bc LDR reading goes low with light
+
+  if (netLeftInput > netRightInput) {
+    // gotta go left
+    int strength = (netLeftInput - netRightInput) / 8;  // 12 bit to 8 bit
+    digitalWrite(DRVR_PIN2, LOW);
+    analogWrite(DRVR_PIN1, strength);
+  } else {
+    // gotta go right
+    int strength = (netRightInput - netLeftInput) / 8;  // 12 bit to 8 bit
+    digitalWrite(DRVR_PIN1, LOW);
+    analogWrite(DRVR_PIN2, strength);
+  }
+}
 
 void readBaseline() {
   for (int i = 0; i < N_READINGS; i++) {
@@ -64,27 +81,27 @@ void updateReadings() {
   long elapsed = now - lastReadingTime;
 
   if (elapsed > SAMPLE_DELAY) {
-      left_buffer[reading % N_READINGS] = analogRead(LDR1_PIN);
-      right_buffer[reading % N_READINGS] = analogRead(LDR2_PIN);
-      reading += 1;
-      lastReadingTime = now;
+    left_buffer[reading % N_READINGS] = analogRead(LDR1_PIN);
+    right_buffer[reading % N_READINGS] = analogRead(LDR2_PIN);
+    reading += 1;
+    lastReadingTime = now;
 
-      if (reading >= N_READINGS) {
-        left = 0;
-        right = 0;
+    if (reading >= N_READINGS) {
+      left = 0;
+      right = 0;
 
-        for (int i = 0; i < N_READINGS; i++) {
-          left += left_buffer[i];
-          right += right_buffer[i];
-        }
-
-        left /= N_READINGS;
-        right /= N_READINGS;
-
-        Serial.print("smoothL:");
-        Serial.print(left);
-        Serial.print(" smoothR:");
-        Serial.println(right);
+      for (int i = 0; i < N_READINGS; i++) {
+        left += left_buffer[i];
+        right += right_buffer[i];
       }
+
+      left /= N_READINGS;
+      right /= N_READINGS;
+
+      Serial.print("smoothL:");
+      Serial.print(left);
+      Serial.print(" smoothR:");
+      Serial.println(right);
     }
+  }
 }
