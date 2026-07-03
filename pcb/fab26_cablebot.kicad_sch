@@ -5171,7 +5171,7 @@
 				)
 			)
 		)
-		(property "Value" "TBD - current sense (0.2, 0.5)"
+		(property "Value" "0.5R"
 			(at 184.15 54.61 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6965,7 +6965,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "CP_Elec_100uF_Panasonic_EEE-FN1E101UL"
+		(property "Value" "100uF"
 			(at 254 49.2124 0)
 			(show_name no)
 			(do_not_autoplace no)
