@@ -6,4 +6,4 @@ Based on a yellow motor driven by a 9V battery, controlled by a custom PCB (kica
 
 Code in `cablebottt.ino`
 
-![](pcb/svg/sab26_cablebot-preview.svg)
+![](pcb/svg/fab26_cablebot-preview.svg)
