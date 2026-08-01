@@ -1,176 +1,224 @@
-#define DRVR_PIN1 D9
-#define DRVR_PIN2 D10
+#define MOTOR_PIN_1 D9
+#define MOTOR_PIN_2 D10
 
 #define BUZZER_PIN D6
 
-#define LDR1_PIN A1
-#define LDR2_PIN A0
+#define LEFT_LDR_PIN A1
+#define RIGHT_LDR_PIN A0
 
-#define N_READINGS 5
-#define SAMPLE_DELAY 10
+#define FILTER_SAMPLES 5
+#define CALIBRATION_SAMPLES 25
+
+const unsigned long SAMPLE_INTERVAL_MS = 10;
+const unsigned long PRINT_INTERVAL_MS = 100;
 
 const int ACTIVATION_THRESHOLD = 200;
 const int DIFFERENCE_DEADBAND = 80;
+const int MIN_MOTOR_SPEED = 70;
 
-int leftBuffer[N_READINGS] = { 0 };
-int rightBuffer[N_READINGS] = { 0 };
+int leftBuffer[FILTER_SAMPLES] = {0};
+int rightBuffer[FILTER_SAMPLES] = {0};
 
 int leftBaseline = 0;
 int rightBaseline = 0;
 
-int left = 0;
-int right = 0;
+int leftReading = 0;
+int rightReading = 0;
 
-unsigned long readingCount = 0;
-unsigned long lastReadingTime = 0;
+unsigned long sampleCount = 0;
+unsigned long lastSampleTime = 0;
+unsigned long lastPrintTime = 0;
 
 void setup() {
-  pinMode(DRVR_PIN1, OUTPUT);
-  pinMode(DRVR_PIN2, OUTPUT);
+  pinMode(MOTOR_PIN_1, OUTPUT);
+  pinMode(MOTOR_PIN_2, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
 
-  digitalWrite(DRVR_PIN1, LOW);
-  digitalWrite(DRVR_PIN2, LOW);
+  digitalWrite(MOTOR_PIN_1, LOW);
+  digitalWrite(MOTOR_PIN_2, LOW);
   digitalWrite(BUZZER_PIN, LOW);
 
   Serial.begin(115200);
 
+  analogReadResolution(12);
+
   stopMotor();
 
-  // Allow the power supply, ADC and sensors to stabilise
+  // Let the power supply and sensors stabilise.
   delay(1000);
 
-  readBaseline();
-  initialiseReadingBuffer();
-
+  calibrateSensors();
+  initialiseFilter();
 }
 
 void loop() {
-  updateReadings();
+  updateSensorReadings();
 
-  if (readingCount < N_READINGS) {
+  if (sampleCount < FILTER_SAMPLES) {
     stopMotor();
     return;
   }
 
-  actOnMotor();
+  controlMotor();
 }
 
-void actOnMotor() {
-  int leftInput = leftBaseline - left;
-  int rightInput = rightBaseline - right;
+void controlMotor() {
+  // Compare each live reading with its ambient-light baseline.
+  // With this LDR circuit, more light produces a lower reading.
+  int leftLightIncrease = leftBaseline - leftReading;
+  int rightLightIncrease = rightBaseline - rightReading;
 
-  leftInput = max(leftInput, 0);
-  rightInput = max(rightInput, 0);
+  // Ignore changes caused by the environment becoming darker.
+  leftLightIncrease = max(leftLightIncrease, 0);
+  rightLightIncrease = max(rightLightIncrease, 0);
 
-  int strongestInput = max(leftInput, rightInput);
-  int difference = leftInput - rightInput;
+  // Find the strongest light change detected by either sensor.
+  int strongestLightIncrease =
+    max(leftLightIncrease, rightLightIncrease);
 
-  if (strongestInput < ACTIVATION_THRESHOLD ||
-      abs(difference) < DIFFERENCE_DEADBAND) {
+  // A positive difference means the left sensor sees more light.
+  // A negative difference means the right sensor sees more light.
+  int lightDifference =
+    leftLightIncrease - rightLightIncrease;
+
+  // Stop if neither sensor sees a sufficiently strong light change.
+  if (strongestLightIncrease < ACTIVATION_THRESHOLD) {
     stopMotor();
     return;
   }
 
-  int strength = constrain(abs(difference) / 8, 0, 255);
-
-  if (difference > 0) {
-    analogWrite(DRVR_PIN2, 0);
-    digitalWrite(DRVR_PIN2, LOW);
-    analogWrite(DRVR_PIN1, strength);
-  } else {
-    analogWrite(DRVR_PIN1, 0);
-    digitalWrite(DRVR_PIN1, LOW);
-    analogWrite(DRVR_PIN2, strength);
+  // Stop if both sensors see approximately the same amount of light.
+  if (abs(lightDifference) < DIFFERENCE_DEADBAND) {
+    stopMotor();
+    return;
   }
+
+  // A larger difference between the sensors produces a higher speed.
+  int motorSpeed = constrain(
+    abs(lightDifference) / 8,
+    MIN_MOTOR_SPEED,
+    255
+  );
+
+  // Move towards the sensor receiving the stronger light.
+  if (lightDifference > 0) {
+    driveLeft(motorSpeed);
+  } else {
+    driveRight(motorSpeed);
+  }
+}
+
+void driveLeft(int motorSpeed) {
+  analogWrite(MOTOR_PIN_2, 0);
+  digitalWrite(MOTOR_PIN_2, LOW);
+
+  analogWrite(MOTOR_PIN_1, motorSpeed);
+}
+
+void driveRight(int motorSpeed) {
+  analogWrite(MOTOR_PIN_1, 0);
+  digitalWrite(MOTOR_PIN_1, LOW);
+
+  analogWrite(MOTOR_PIN_2, motorSpeed);
 }
 
 void stopMotor() {
-  analogWrite(DRVR_PIN1, 0);
-  analogWrite(DRVR_PIN2, 0);
+  analogWrite(MOTOR_PIN_1, 0);
+  analogWrite(MOTOR_PIN_2, 0);
 
-  digitalWrite(DRVR_PIN1, LOW);
-  digitalWrite(DRVR_PIN2, LOW);
+  digitalWrite(MOTOR_PIN_1, LOW);
+  digitalWrite(MOTOR_PIN_2, LOW);
 }
 
-void readBaseline() {
+void calibrateSensors() {
   long leftTotal = 0;
   long rightTotal = 0;
 
   stopMotor();
 
-  for (int i = 0; i < N_READINGS; i++) {
-    int leftReading = analogRead(LDR1_PIN);
-    int rightReading = analogRead(LDR2_PIN);
+  Serial.println("Calibrating LDR sensors...");
 
-    leftTotal += leftReading;
-    rightTotal += rightReading;
-
-    Serial.print(leftReading);
-    Serial.print(",");
-    Serial.println(rightReading);
+  for (int i = 0; i < CALIBRATION_SAMPLES; i++) {
+    leftTotal += analogRead(LEFT_LDR_PIN);
+    rightTotal += analogRead(RIGHT_LDR_PIN);
 
     delay(20);
   }
 
-  leftBaseline = leftTotal / N_READINGS;
-  rightBaseline = rightTotal / N_READINGS;
+  leftBaseline = leftTotal / CALIBRATION_SAMPLES;
+  rightBaseline = rightTotal / CALIBRATION_SAMPLES;
 
-  left = leftBaseline;
-  right = rightBaseline;
+  leftReading = leftBaseline;
+  rightReading = rightBaseline;
 
-  Serial.print("Baseline L: ");
-  Serial.print(leftBaseline);
-  Serial.print(" R: ");
+  Serial.print("Left baseline: ");
+  Serial.println(leftBaseline);
+
+  Serial.print("Right baseline: ");
   Serial.println(rightBaseline);
 }
 
-void initialiseReadingBuffer() {
-  for (int i = 0; i < N_READINGS; i++) {
+void initialiseFilter() {
+  for (int i = 0; i < FILTER_SAMPLES; i++) {
     leftBuffer[i] = leftBaseline;
     rightBuffer[i] = rightBaseline;
   }
 
-  left = leftBaseline;
-  right = rightBaseline;
+  leftReading = leftBaseline;
+  rightReading = rightBaseline;
 
-  readingCount = N_READINGS;
-  lastReadingTime = millis();
+  sampleCount = FILTER_SAMPLES;
+  lastSampleTime = millis();
 }
 
-void updateReadings() {
+void updateSensorReadings() {
   unsigned long now = millis();
 
-  if (now - lastReadingTime < SAMPLE_DELAY) {
+  if (now - lastSampleTime < SAMPLE_INTERVAL_MS) {
     return;
   }
 
-  lastReadingTime = now;
+  lastSampleTime = now;
 
-  int index = readingCount % N_READINGS;
+  int bufferIndex = sampleCount % FILTER_SAMPLES;
 
-  leftBuffer[index] = analogRead(LDR1_PIN);
-  rightBuffer[index] = analogRead(LDR2_PIN);
+  leftBuffer[bufferIndex] = analogRead(LEFT_LDR_PIN);
+  rightBuffer[bufferIndex] = analogRead(RIGHT_LDR_PIN);
 
-  readingCount++;
+  sampleCount++;
 
   long leftTotal = 0;
   long rightTotal = 0;
 
-  for (int i = 0; i < N_READINGS; i++) {
+  for (int i = 0; i < FILTER_SAMPLES; i++) {
     leftTotal += leftBuffer[i];
     rightTotal += rightBuffer[i];
   }
 
-  left = leftTotal / N_READINGS;
-  right = rightTotal / N_READINGS;
+  leftReading = leftTotal / FILTER_SAMPLES;
+  rightReading = rightTotal / FILTER_SAMPLES;
 
-  Serial.print("L:");
-  Serial.print(left);
-  Serial.print(" R:");
-  Serial.print(right);
-  Serial.print(" DL:");
-  Serial.print(leftBaseline - left);
-  Serial.print(" DR:");
-  Serial.println(rightBaseline - right);
+  printSensorReadings();
+}
+
+void printSensorReadings() {
+  unsigned long now = millis();
+
+  if (now - lastPrintTime < PRINT_INTERVAL_MS) {
+    return;
+  }
+
+  lastPrintTime = now;
+
+  Serial.print("Left: ");
+  Serial.print(leftReading);
+
+  Serial.print("  Right: ");
+  Serial.print(rightReading);
+
+  Serial.print("  Left change: ");
+  Serial.print(leftBaseline - leftReading);
+
+  Serial.print("  Right change: ");
+  Serial.println(rightBaseline - rightReading);
 }
