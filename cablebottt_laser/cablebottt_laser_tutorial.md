@@ -1,100 +1,217 @@
 # CABLEBOTTT — Sketch A: `cablebottt_laser`
 
-**Autonomous light-following robot.** The cablebot reads two light sensors (LDRs) and drives its motor toward the brighter side. This is the **sensor → decision → actuator** loop in its purest form.
+**Autonomous light-following robot.** The cablebot reads two light-dependent resistors, or LDRs, and drives its motor towards the side receiving more light. It demonstrates a simple **sensor → decision → actuator** loop.
 
-Board: **Seeed Studio XIAO ESP32-C3** · File: **`cablebottt_laser/cablebottt.ino`** · Repo: `github.com/fablabbcn/cablebottt`
-
----
-
-## 📚 Libraries needed: NONE
-
-This sketch uses **no external libraries**. It has zero `#include` lines and relies only on the standard Arduino core for ESP32 (`Serial`, `analogRead`, `analogWrite`, `digitalWrite`, `pinMode`, `millis`, `delay`).
-
-That means: **as soon as the ESP32 board package is installed (Part 1 below), you can upload straight away** — nothing to add in Library Manager. Save the library installs for Sketch B (the webapp one).
+**Board:** Seeed Studio XIAO ESP32-C3
+**File:** `cablebottt_laser/cablebottt.ino`
+**Repository:** `github.com/fablabbcn/cablebottt`
 
 ---
 
-## Part 1 — One-time setup (once per computer)
+## 📚 Libraries needed: none
+
+This sketch does not use any external libraries. It relies only on functions included in the standard Arduino core for ESP32, including:
+
+* `Serial`
+* `analogRead`
+* `analogWrite`
+* `digitalWrite`
+* `pinMode`
+* `millis`
+* `delay`
+
+Once the ESP32 board package is installed, you can compile and upload the sketch directly. No additional installation through the Library Manager is required.
+
+---
+
+## Part 1 — One-time setup
+
+You only need to complete this section once on each computer.
 
 ### 1.1 · Install the Arduino IDE
-Download the stable **Arduino IDE 2.x** from `arduino.cc/en/software` and install it.
+
+Download and install the stable version of **Arduino IDE 2.x** from:
+
+`arduino.cc/en/software`
 
 ### 1.2 · Add ESP32 board support
-1. Go to **File › Preferences** (on Mac: **Arduino IDE › Settings**).
-2. In **"Additional boards manager URLs"**, paste:
+
+1. Open **File › Preferences**. On macOS, open **Arduino IDE › Settings**.
+
+2. Find **Additional Boards Manager URLs**.
+
+3. Add:
+
+   ```text
+   https://espressif.github.io/arduino-esp32/package_esp32_index.json
    ```
-   https://espressif.github.io/arduino-esp32/package_esp32_dev_index.json
-   ```
-3. **OK**.
 
-### 1.3 · Install the boards package
-1. **Tools › Board › Boards Manager…** (or the boards icon on the left).
-2. Search **`esp32`**.
-3. Install **"esp32 by Espressif Systems"** (latest version). Takes a couple of minutes.
+4. Press **OK**.
 
-### 1.4 · Select board and port
-1. Connect the XIAO with a **USB-C data cable** (many cables are charge-only; if the board doesn't show up, swap the cable first).
-2. **Tools › Board › esp32 › `XIAO_ESP32C3`**.
-3. **Tools › Port** → pick the port that appears when you plug the board in (COMx on Windows, `/dev/cu.usbmodem…` on Mac, `/dev/ttyACM0` on Linux).
+### 1.3 · Install the ESP32 boards package
 
-### 1.5 · ⚙️ CRITICAL setting for the Serial Monitor
+1. Open **Tools › Board › Boards Manager**, or select the boards icon in the left sidebar.
+2. Search for `esp32`.
+3. Install **esp32 by Espressif Systems**.
+
+Installation may take a few minutes.
+
+### 1.4 · Select the board and port
+
+1. Connect the XIAO using a **USB-C data cable**. Some USB cables provide power but do not transfer data.
+2. Select **Tools › Board › esp32 › XIAO_ESP32C3**.
+3. Open **Tools › Port** and select the port that appears when the board is connected.
+
+Typical port names are:
+
+* Windows: `COM3`, `COM4`, etc.
+* macOS: `/dev/cu.usbmodem…`
+* Linux: `/dev/ttyACM0` or similar
+
+### 1.5 · Enable USB serial output
+
 Under **Tools**, set:
-- **USB CDC On Boot → `Enabled`**
 
-> Without this, the ESP32-C3's Serial Monitor stays **blank** over USB-C. It's the #1 gotcha. Turn it on before you start. Leave the other **Tools** options at their defaults.
+```text
+USB CDC On Boot → Enabled
+```
+
+Without this setting, the Serial Monitor may remain blank when using the XIAO ESP32-C3 over USB-C.
+
+Leave the other board options at their default values unless your setup requires otherwise.
 
 ---
 
 ## Part 2 — Upload Sketch A
 
-### 2.1 · Open the code
-Open **`cablebottt_laser/cablebottt.ino`** (double-click the `.ino`, or **File › Open…**).
+### 2.1 · Open the sketch
 
-### 2.2 · Check board and port
-Make sure **`XIAO_ESP32C3`** and the correct port are still selected (Part 1.4).
+Open:
+
+```text
+cablebottt_laser/cablebottt.ino
+```
+
+You can double-click the `.ino` file or use **File › Open** in the Arduino IDE.
+
+### 2.2 · Check the board and port
+
+Confirm that:
+
+* the selected board is `XIAO_ESP32C3`;
+* the correct serial port is selected.
 
 ### 2.3 · Upload
-Press the **Upload** button (→ arrow). You'll see `Compiling…` then `Writing…`.
-If it ends with **`Hard resetting via RTS pin…`** → uploaded successfully ✅.
 
-### 2.4 · Verify it works
-1. Open **Tools › Serial Monitor** and set the speed to **`115200 baud`** (bottom-right).
-2. On boot, the robot reads a **baseline** light level for ~1 second. You'll see the two LDR readings and a `baseline` line.
-3. Shine your phone's flashlight on one LDR: the motor should pull toward the **brighter** side.
+Press the **Upload** button.
+
+The Arduino IDE will compile the sketch and write it to the board. A message such as:
+
+```text
+Hard resetting via RTS pin...
+```
+
+normally indicates that the upload completed successfully.
+
+### 2.4 · Test the robot
+
+1. Open **Tools › Serial Monitor**.
+2. Set the baud rate to `115200`.
+3. Restart the board.
+4. Keep the laser or flashlight away from both sensors while the robot calibrates.
+5. Shine light onto one LDR.
+
+The motor should move towards the side receiving the stronger light.
+
+Calibration takes approximately 1.5 seconds after startup. The robot should remain still during this period.
 
 ---
 
-## How it works (to explain to students)
+## How the sketch works
 
-| Step | What happens |
-|---|---|
-| **Baseline** | At startup it averages 20 readings from each LDR to learn the "neutral" light level of the room. |
-| **Read** | In the loop it keeps a rolling average of the last 20 readings per side (smoothing out flicker). |
-| **Decide** | It compares left vs. right against the baseline. Note: the LDR value goes *down* as light goes *up*, so the code inverts the sign. |
-| **Act** | It drives the motor (`D9`/`D10`) toward the brighter side, with strength proportional to how big the difference is. |
+| Step               | What happens                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| **Stabilise**      | The sketch waits briefly after startup so the power supply and analogue readings can settle.                              |
+| **Calibrate**      | It averages 25 readings from each LDR to establish the ambient-light baseline.                                            |
+| **Read**           | It continuously reads both sensors and calculates a moving average from the latest five samples.                          |
+| **Measure change** | It compares each filtered reading with its startup baseline. In this circuit, more light produces a lower analogue value. |
+| **Ignore noise**   | Small changes are ignored using an activation threshold. Similar readings on both sides are ignored using a deadband.     |
+| **Decide**         | The sketch identifies which LDR is receiving the stronger increase in light.                                              |
+| **Act**            | It drives the motor towards that side. A larger difference between the sensors produces a higher motor speed.             |
+| **Stop**           | The motor stops when there is no strong light signal or when both sensors receive similar amounts of light.               |
 
-The takeaway for STEAM: this is a complete **closed feedback loop** — the robot senses the world, makes a decision, and acts on it, with no human in the loop. That's the seed of computational thinking.
+This creates a basic **closed feedback loop**: the robot senses its environment, evaluates the information and changes its movement in response.
 
 ---
 
-## Pinout (Sketch A)
+## Key parameters
 
-| Function | Pin |
-|---|---|
-| Motor driver 1 | `D9` |
-| Motor driver 2 | `D10` |
-| LDR left | `A1` |
-| LDR right | `A0` |
+The behaviour can be adjusted near the beginning of the sketch:
+
+```cpp
+#define FILTER_SAMPLES 5
+#define CALIBRATION_SAMPLES 25
+
+const int ACTIVATION_THRESHOLD = 200;
+const int DIFFERENCE_DEADBAND = 80;
+const int MIN_MOTOR_SPEED = 70;
+```
+
+### `FILTER_SAMPLES`
+
+Controls how many recent readings are averaged.
+
+* Higher values produce smoother readings.
+* Lower values respond more quickly.
+
+### `CALIBRATION_SAMPLES`
+
+Controls how many readings are used to establish the ambient-light baseline.
+
+A higher value produces a more stable calibration, but takes slightly longer.
+
+### `ACTIVATION_THRESHOLD`
+
+Sets how large the change from ambient light must be before the robot reacts.
+
+Increase this value if the robot reacts to normal room-light variation.
+
+### `DIFFERENCE_DEADBAND`
+
+Sets how different the two sensors must be before the motor chooses a direction.
+
+Increase this value if the robot oscillates when both sensors receive similar light.
+
+### `MIN_MOTOR_SPEED`
+
+Sets the minimum PWM value used once movement is activated.
+
+This helps ensure that the motor receives enough power to start moving rather than humming or remaining stalled.
+
+---
+
+## Pinout
+
+| Function                   | Pin   |
+| -------------------------- | ----- |
+| Motor driver input 1       | `D9`  |
+| Motor driver input 2       | `D10` |
+| Left LDR                   | `A1`  |
+| Right LDR                  | `A0`  |
+| Buzzer, currently inactive | `D6`  |
 
 ---
 
 ## Quick troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| Board **doesn't appear** under Port | Charge-only cable, or board stuck | Swap the USB-C cable. If it persists: **bootloader mode** → hold **BOOT**, press and release **RESET**, release **BOOT**. The port reappears; upload again. |
-| **Serial Monitor blank** | CDC missing | **Tools › USB CDC On Boot → Enabled** and upload again. |
-| `A fatal error occurred: Failed to connect` | Port busy or in run mode | Close the Serial Monitor, enter bootloader mode (BOOT+RESET) and retry. |
-| IDE shows **DFRobot Beetle** on connect | Known auto-detection bug | Ignore it: manually select `XIAO_ESP32C3` under **Tools › Board** and upload anyway. |
-| **Motor spins by itself** for an instant on boot | Pin `D9` is a *strapping* pin (boots high) | Normal. The code silences it as soon as it starts. |
-| Motor doesn't react to light | Room too bright/even, or LDRs swapped | Cover one LDR fully to create contrast; check `A0`/`A1` wiring. |
+| Symptom                                      | Likely cause                                                                          | Fix                                                                                                                                            |
+| -------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| The board does not appear under **Port**     | Charge-only USB cable or board not entering upload mode                               | Try another USB-C cable. To enter bootloader mode, hold **BOOT**, press and release **RESET**, then release **BOOT**.                          |
+| Serial Monitor is blank                      | USB CDC is disabled or the wrong baud rate is selected                                | Set **USB CDC On Boot → Enabled**, upload again and select `115200` baud.                                                                      |
+| `Failed to connect` during upload            | Incorrect port, port in use or board not in bootloader mode                           | Close the Serial Monitor, confirm the port and retry in bootloader mode.                                                                       |
+| The IDE identifies the board incorrectly     | Automatic board detection is unreliable                                               | Manually select `XIAO_ESP32C3` under **Tools › Board**.                                                                                        |
+| The motor moves briefly during startup       | `D9` is involved in the ESP32-C3 boot configuration                                   | A short movement may occur before the sketch takes control. Hardware pull-downs or a motor-driver enable pin provide a more reliable solution. |
+| The motor does not react to light            | Signal is below the threshold, sensors are swapped or the room is already very bright | Cover one LDR or shine a focused light onto the other. Check the `A0` and `A1` connections.                                                    |
+| The motor moves in the wrong direction       | Motor wiring or direction labels are reversed                                         | Swap the motor wires or exchange the calls to `driveLeft()` and `driveRight()`.                                                                |
+| The motor hums but does not move             | PWM is too low or the power supply cannot provide enough current                      | Increase `MIN_MOTOR_SPEED` and check the battery, regulator and motor-driver supply.                                                           |
+| The robot reacts unpredictably after startup | A sensor was illuminated during calibration                                           | Restart the board with both LDRs exposed only to normal ambient light.                                                                         |
